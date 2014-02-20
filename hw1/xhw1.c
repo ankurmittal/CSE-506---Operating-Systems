@@ -16,6 +16,15 @@ struct option_args {
 	char print_short_usuage_string;
 };
 
+struct syscall_params {
+	const char *outfile; // name of output file
+	const char **infiles; // array with names of input files
+	unsigned int infile_count; // number of input files in infiles array
+	int oflags; // Open flags to change behavior of syscall
+	mode_t mode; // default permission mode for newly created outfile
+	unsigned int flags; // special flags to change behavior of syscall
+};
+
 void parseOptions(int argc, char *argv[], struct option_args *options)
 {
 	int c;
@@ -65,21 +74,29 @@ void parseOptions(int argc, char *argv[], struct option_args *options)
 
 int main(int argc, char *argv[])
 {
-	int index;
+	int index,rc;
+
+	struct syscall_params sys_param;
 	struct option_args options = {0};
 	parseOptions(argc, argv, &options);
 	for (index = optind; index < argc; index++)
 		printf("Non-option argument %s\n", argv[index]);
-	/*int rc;
-	  void *dummy = (void *) atoi(argv[1]);
+	//int rc;
+	sys_param.outfile = "test.txt";
+	//char **files = (char *[]){"testi.txt","in2.txt"};
+	sys_param.infiles  = NULL;
+	sys_param.infile_count = 2;
+	sys_param.oflags = 0;
+	sys_param.flags = 1;
+	void *dummy = ((void *) &sys_param);
 
-	  rc = syscall(__NR_xconcat, dummy);
-	  if (rc == 0)
-	  printf("syscall returned %d\n", rc);
-	  else
-	  printf("syscall returned %d (errno=%d)\n", rc, errno);
+	rc = syscall(__NR_xconcat, dummy);
+	if (rc == 0)
+		printf("syscall returned %d\n", rc);
+	else
+		printf("syscall returned %d (errno=%d)\n", rc, errno);
 
-	  exit(rc);*/
+	exit(rc);
 	return 0;
 }
 
