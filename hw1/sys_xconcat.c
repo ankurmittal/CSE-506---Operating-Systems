@@ -31,7 +31,7 @@ void showArgs(struct syscall_params *params)
 }
 #endif
 
-struct file *file_open(const char *path, int flags, int rights, int *err)
+int file_open(const char *path, int flags, int rights, struct file **fileptr)
 {
 	struct file *filp = NULL;
 	mm_segment_t oldfs;
@@ -41,10 +41,11 @@ struct file *file_open(const char *path, int flags, int rights, int *err)
 	filp = filp_open(path, flags, rights);
 	set_fs(oldfs);
 	if (IS_ERR(filp)) {
-		*err = PTR_ERR(filp);
-		return NULL;
+		*fileptr = NULL;
+		return PTR_ERR(filp);
 	}
-	return filp;
+	*fileptr = filp;
+	return 0;
 }
 
 void file_close(struct file *file)
@@ -91,19 +92,28 @@ int file_sync(struct file *file)
 int read_write(struct syscall_params *params)
 {
 	int i, ret, count, bytes_written = 0, err = 0;
-	struct file *infile;
+	struct file *infile,*outfile;
 	unsigned char data[BUFFER_SIZE];
-	struct file *outfile = file_open(params->outfile,
-			O_WRONLY|params->oflags, params->mode, &err);
+	err = file_open(params->outfile,
+			O_WRONLY|params->oflags, params->mode, &outfile);
 	if(err < 0){
-		printk("error:%d",err);
+		printk(KERN_INFO "error opening %s:%d", params->outfile, err);
 		return err;
+	}
+
+	for (i = 0; i < params->infile_count; i++) {
+		err = file_open(params->infiles[i], O_RDONLY, 0, &infile);
+		if (err < 0) {
+			printk(KERN_INFO "error opening %s:%d", params->infiles[i], err);
+			return err;
+		}
+		file_close(infile);
 	}
 	for (i = 0; i < params->infile_count; i++) {
 		ret = 0;
 		count = 0;
 		/*TODO:need to check read access*/
-		infile = file_open(params->infiles[i], O_RDONLY, 0, &err);
+		err = file_open(params->infiles[i], O_RDONLY, 0, &infile);
 		if(err < 0){
 			printk("error:%d",err);
 			return err;
@@ -136,12 +146,11 @@ asmlinkage long xconcat(void *arg)
 		return -EINVAL;
 	else {
 		p = arg;
+		#if DEBUGGING
 		showArgs(p);
+		#endif
 		err = read_write(p);
-		if (err < 0) {
-			return err;
-		}
-		return 0;
+		return err;
 	}
 }
 
