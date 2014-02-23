@@ -4,25 +4,24 @@
 #include <fcntl.h>
 #include <errno.h>
 
-#define __NR_xconcat	349	/* our private syscall number */
-typedef unsigned int uint;
+#define __NR_xconcat	349	/*our private syscall number*/
 struct option_args {
 	int output_mode;
-	uint atomic_concat_mode:1;
-	uint return_no_of_files:1;
-	uint return_percent_data:1;
-	uint mode_set:1;
+	uint atomic_concat_mode : 1;
+	uint return_no_of_files : 1;
+	uint return_percent_data : 1;
+	uint mode_set : 1;
 	int mode_arg;
-	uint print_short_usuage_string:1;
+	uint print_short_usuage_string : 1;
 };
 
 struct syscall_params {
-	const char *outfile; // name of output file
-	const char **infiles; // array with names of input files
-	unsigned int infile_count; // number of input files in infiles array
-	int oflags; // Open flags to change behavior of syscall
-	mode_t mode; // default permission mode for newly created outfile
-	unsigned int flags; // special flags to change behavior of syscall
+	const char *outfile; /*name of output file*/
+	const char **infiles; /*array with names of input files*/
+	unsigned int infile_count; /*number of input files in infiles array*/
+	int oflags; /*Open flags to change behavior of syscall*/
+	mode_t mode; /*default permission mode for newly created outfile*/
+	unsigned int flags; /*special flags to change behavior of syscall*/
 };
 
 void parseOptions(int argc, char *argv[], struct option_args *options)
@@ -74,19 +73,19 @@ void parseOptions(int argc, char *argv[], struct option_args *options)
 
 int main(int argc, char *argv[])
 {
-	int index,rc;
+	int index, rc;
 
 	struct syscall_params sys_param;
 	struct option_args options = {0};
 	parseOptions(argc, argv, &options);
-	if(optind < argc)
+	if (optind < argc)
 		sys_param.outfile = argv[optind];
-	if(optind + 1 >= argc){
+	if (optind + 1 >= argc) {
 		printf("Insufficient Arguments");
 		return 1;
 	}
 	sys_param.infile_count = argc-optind-1;
-	sys_param.infiles = malloc(sizeof(char*)*(sys_param.infile_count));
+	sys_param.infiles = malloc(sizeof(char *)*(sys_param.infile_count));
 	for (index = optind + 1; index < argc; index++)
 		sys_param.infiles[index-optind-1] = argv[index];
 	sys_param.oflags = options.output_mode;
