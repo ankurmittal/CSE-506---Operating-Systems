@@ -101,7 +101,3 @@ int main(int argc, char *argv[])
 	exit(rc);
 	return 0;
 }
-
-
-
-

@@ -31,18 +31,17 @@ void showArgs(struct syscall_params *params)
 }
 #endif
 
-struct file *file_open(const char *path, int flags, int rights)
+struct file *file_open(const char *path, int flags, int rights, int *err)
 {
 	struct file *filp = NULL;
 	mm_segment_t oldfs;
-	int err = 0;
 
 	oldfs = get_fs();
 	set_fs(get_ds());
 	filp = filp_open(path, flags, rights);
 	set_fs(oldfs);
 	if (IS_ERR(filp)) {
-		err = PTR_ERR(filp);
+		*err = PTR_ERR(filp);
 		return NULL;
 	}
 	return filp;
@@ -91,26 +90,33 @@ int file_sync(struct file *file)
 
 int read_write(struct syscall_params *params)
 {
-	int i, ret, count, bytes_written = 0;
-	struct file *outfile = file_open(params->outfile,
-			O_WRONLY|params->oflags, params->mode);
+	int i, ret, count, bytes_written = 0, err = 0;
 	struct file *infile;
 	unsigned char data[BUFFER_SIZE];
-	/*TODO:Check for outputfile error*/
+	struct file *outfile = file_open(params->outfile,
+			O_WRONLY|params->oflags, params->mode, &err);
+	if(err < 0){
+		printk("error:%d",err);
+		return err;
+	}
 	for (i = 0; i < params->infile_count; i++) {
 		ret = 0;
 		count = 0;
 		/*TODO:need to check read access*/
-		infile = file_open(params->infiles[i], O_RDONLY, 0);
-		/*TODO: Check error Condition*/
+		infile = file_open(params->infiles[i], O_RDONLY, 0, &err);
+		if(err < 0){
+			printk("error:%d",err);
+			return err;
+		}
+		printk("err: %d",err);
 		do {
 			ret = file_read(infile, count*BUFFER_SIZE,
-				data, BUFFER_SIZE);
-			if (ret > BUFFER_SIZE)
+					data, BUFFER_SIZE);
+			if (ret < BUFFER_SIZE)
 				data[ret] = 0;
 			count++;
 			bytes_written += file_write(outfile,
-			bytes_written, data, ret);
+					bytes_written, data, ret);
 			printk(KERN_INFO "bytes_written, %d", bytes_written);
 		} while (ret == BUFFER_SIZE);
 		file_close(infile);
@@ -124,12 +130,17 @@ int read_write(struct syscall_params *params)
 asmlinkage long xconcat(void *arg)
 {
 	struct syscall_params *p;
+
+	int err = 0;
 	if (arg == NULL)
 		return -EINVAL;
 	else {
 		p = arg;
 		showArgs(p);
-		read_write(p);
+		err = read_write(p);
+		if (err < 0) {
+			return err;
+		}
 		return 0;
 	}
 }
