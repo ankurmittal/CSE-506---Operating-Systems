@@ -5,15 +5,15 @@
 #include <errno.h>
 
 #define __NR_xconcat	349	/* our private syscall number */
-
+typedef unsigned int uint;
 struct option_args {
 	int output_mode;
-	char atomic_concat_mode;
-	char return_no_of_files;
-	char return_percent_data;
-	char mode_set;
-	char mode_arg;
-	char print_short_usuage_string;
+	uint atomic_concat_mode:1;
+	uint return_no_of_files:1;
+	uint return_percent_data:1;
+	uint mode_set:1;
+	int mode_arg;
+	uint print_short_usuage_string:1;
 };
 
 struct syscall_params {
@@ -79,18 +79,21 @@ int main(int argc, char *argv[])
 	struct syscall_params sys_param;
 	struct option_args options = {0};
 	parseOptions(argc, argv, &options);
-	for (index = optind; index < argc; index++)
-		printf("Non-option argument %s\n", argv[index]);
-	//int rc;
-	sys_param.outfile = "test.txt";
-	//char **files = (char *[]){"testi.txt","in2.txt"};
-	sys_param.infiles  = NULL;
-	sys_param.infile_count = 2;
-	sys_param.oflags = 0;
+	if(optind < argc)
+		sys_param.outfile = argv[optind];
+	if(optind + 1 >= argc){
+		printf("Insufficient Arguments");
+		return 1;
+	}
+	sys_param.infile_count = argc-optind-1;
+	sys_param.infiles = malloc(sizeof(char*)*(sys_param.infile_count));
+	for (index = optind + 1; index < argc; index++)
+		sys_param.infiles[index-optind-1] = argv[index];
+	sys_param.oflags = options.output_mode;
 	sys_param.flags = 1;
-	void *dummy = ((void *) &sys_param);
+	void *p = ((void *) &sys_param);
 
-	rc = syscall(__NR_xconcat, dummy);
+	rc = syscall(__NR_xconcat, p);
 	if (rc == 0)
 		printf("syscall returned %d\n", rc);
 	else
