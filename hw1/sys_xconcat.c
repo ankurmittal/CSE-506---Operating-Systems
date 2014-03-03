@@ -1,9 +1,11 @@
 #include <linux/linkage.h>
 #include <linux/fs.h>
+#include <linux/slab.h>
 #include <linux/moduleloader.h>
 #include <asm/segment.h>
+#include <asm/page.h>
 #include <linux/uaccess.h>
-#define BUFFER_SIZE 1024
+#define BUFFER_SIZE PAGE_SIZE
 #define DEBUGGING 1
 
 struct syscall_params {
@@ -92,8 +94,9 @@ int file_sync(struct file *file)
 int read_write(struct syscall_params *params)
 {
 	int i, ret, count, bytes_written = 0, err = 0;
+	//TODO support flags
 	struct file *infile,*outfile;
-	unsigned char data[BUFFER_SIZE];
+	unsigned char *data = kmalloc(sizeof(char)*BUFFER_SIZE, GFP_ATOMIC);
 	err = file_open(params->outfile,
 			O_WRONLY|params->oflags, params->mode, &outfile);
 	if(err < 0){
@@ -107,6 +110,7 @@ int read_write(struct syscall_params *params)
 			printk(KERN_INFO "error opening %s:%d", params->infiles[i], err);
 			return err;
 		}
+		//TODO check if infile == outfile
 		file_close(infile);
 	}
 	for (i = 0; i < params->infile_count; i++) {
@@ -131,6 +135,8 @@ int read_write(struct syscall_params *params)
 		} while (ret == BUFFER_SIZE);
 		file_close(infile);
 	}
+	//TODO cleanup code on error
+	kfree(data);
 	file_sync(outfile);
 	file_close(outfile);
 	return 0;
@@ -146,6 +152,8 @@ asmlinkage long xconcat(void *arg)
 		return -EINVAL;
 	else {
 		p = arg;
+		//TODO check arg and bring data from user space to kernal space
+		//TODO implement atomic func for extra credit
 		#if DEBUGGING
 		showArgs(p);
 		#endif
