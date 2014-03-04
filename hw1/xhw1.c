@@ -92,7 +92,7 @@ int main(int argc, char *argv[])
 	sys_param.flags = 1;
 	void *p = ((void *) &sys_param);
 
-	rc = syscall(__NR_xconcat, p);
+	rc = syscall(__NR_xconcat, p, 2);
 	if (rc == 0)
 		printf("syscall returned %d\n", rc);
 	else
