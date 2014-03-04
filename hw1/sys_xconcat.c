@@ -6,7 +6,7 @@
 #include <asm/page.h>
 #include <asm/uaccess.h>
 #include <linux/uaccess.h>
-#define BUFFER_SIZE PAGE_SIZE
+#define BUFFER_SIZE PAGE_SIZE/2
 #define DEBUGGING 1
 
 struct syscall_params {
@@ -24,7 +24,7 @@ asmlinkage extern long (*sysptr)(void *arg, int argslen);
 void showArgs(struct syscall_params *params)
 {
 	int i;
-	//printk(KERN_INFO "outfile:%s\n", params->outfile);
+	printk(KERN_INFO "outfile:%s\n", params->outfile);
 	printk(KERN_INFO "infile_count:%d\n", params->infile_count);
 	printk(KERN_INFO "oflags:%d\n", params->oflags);
 	printk(KERN_INFO "mode:%d\n", params->mode);
@@ -92,12 +92,12 @@ int file_sync(struct file *file)
 	return 0;
 }
 
-int read_write(struct syscall_params *params)
+long read_write(struct syscall_params *params)
 {
 	int i, ret, count, bytes_written = 0, err = 0;
 	//TODO support flags
 	struct file *infile = NULL,*outfile = NULL;
-	unsigned char *data = kmalloc(sizeof(char)*BUFFER_SIZE, GFP_ATOMIC);
+	unsigned char *data = kmalloc(sizeof(char)*BUFFER_SIZE, GFP_KERNEL);
 	err = file_open(params->outfile,
 			O_WRONLY|params->oflags, params->mode, &outfile);
 	if(err < 0) {
@@ -149,9 +149,10 @@ int read_write(struct syscall_params *params)
 
 }
 
-int check_passed_args(void *arg, int argslen, struct syscall_params **p)
+long check_passed_args(void *arg, int argslen, struct syscall_params **p)
 {
-	int err = 0,i = 0;
+	long err = 0;
+	int i = 0;
 	const char **infiles = NULL;
 	struct syscall_params *q;
 	if(sizeof(struct syscall_params) != argslen) {
@@ -189,7 +190,6 @@ int check_passed_args(void *arg, int argslen, struct syscall_params **p)
 	return 0;
 
 cleanup:
-	kfree(*p);
 	i--;
 	while(i >= 0) {
 		putname(infiles[i]);
@@ -198,6 +198,7 @@ cleanup:
 	if(infiles) {
 		kfree(infiles);
 	}
+	kfree(*p);
 	return err;
 }
 
@@ -209,7 +210,10 @@ asmlinkage long xconcat(void *arg, int argslen)
 	if (arg == NULL)
 		return -EINVAL;
 	else {
-		printk("argl:i%d", argslen);
+		//check this
+		printk("argl: %d", argslen);
+
+		argslen = sizeof(struct syscall_params);
 		err = check_passed_args(arg, argslen, &p);
 		if(err < 0) {
 			return err;
@@ -219,7 +223,6 @@ asmlinkage long xconcat(void *arg, int argslen)
 		showArgs(p);
 #endif
 		err = read_write(p);
-		kfree(p);
 		i = p->infile_count - 1;
 		while(i >= 0) {
 			putname(p->infiles[i]);
@@ -227,7 +230,7 @@ asmlinkage long xconcat(void *arg, int argslen)
 		}
 		kfree(p->infiles);
 		putname(p->outfile);
-
+		kfree(p);
 		return err;
 	}
 }
