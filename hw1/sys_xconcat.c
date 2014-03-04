@@ -107,10 +107,14 @@ int read_write(struct syscall_params *params)
 	for (i = 0; i < params->infile_count; i++) {
 		err = file_open(params->infiles[i], O_RDONLY, 0, &infile);
 		if (err < 0) {
-			printk(KERN_INFO "error opening %s:%d", params->infiles[i], err);
+			printk(KERN_INFO "error opening %s:%d",
+					params->infiles[i], err);
 			return err;
 		}
-		//TODO check if infile == outfile
+		if(infile->f_dentry->d_inode == outfile->f_dentry->d_inode){
+			//clean up
+			return -EPERM;
+		}
 		file_close(infile);
 	}
 	for (i = 0; i < params->infile_count; i++) {
