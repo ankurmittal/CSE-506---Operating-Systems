@@ -6,7 +6,7 @@
 #include <asm/page.h>
 #include <asm/uaccess.h>
 #include <linux/uaccess.h>
-#define BUFFER_SIZE PAGE_SIZE/2
+#define BUFFER_SIZE PAGE_SIZE
 #define DEBUGGING 1
 
 struct syscall_params {
@@ -53,7 +53,9 @@ int file_open(const char *path, int flags, int rights, struct file **fileptr)
 
 void file_close(struct file *file)
 {
-	filp_close(file, NULL);
+	if(file != NULL) {
+		filp_close(file, NULL);
+	}
 }
 
 int file_read(struct file *file, unsigned long long offset,
@@ -98,12 +100,15 @@ long read_write(struct syscall_params *params)
 	//TODO support flags
 	struct file *infile = NULL,*outfile = NULL;
 	unsigned char *data = kmalloc(sizeof(char)*BUFFER_SIZE, GFP_KERNEL);
+	if(data == NULL) {
+		return -ENOMEM;
+	}
 	err = file_open(params->outfile,
-			O_WRONLY|params->oflags, params->mode, &outfile);
-	if(err < 0) {
-		//clean up
-		printk(KERN_INFO "error opening %s:%d", params->outfile, err);
-		return err;
+			O_WRONLY|O_APPEND, params->mode, &outfile);
+	if((err == -ENOENT && (params->oflags & O_CREAT) == 0)
+			|| (err < 0 && err != -ENOENT)) {
+		printk(KERN_INFO "Error opening output file  %s:%d", params->outfile, err);
+		goto clean_all;
 	}
 
 	for (i = 0; i < params->infile_count; i++) {
@@ -111,13 +116,21 @@ long read_write(struct syscall_params *params)
 		if (err < 0) {
 			printk(KERN_INFO "error opening %s:%d",
 					params->infiles[i], err);
-			return err;
+			goto clean_all;
 		}
 		if(infile->f_dentry->d_inode == outfile->f_dentry->d_inode){
-			//clean up
-			return -EPERM;
+			err = -EPERM;
+			goto clean_all;
 		}
 		file_close(infile);
+	}
+	file_close(outfile);
+	err = file_open(params->outfile,
+			O_WRONLY|params->oflags, params->mode, &outfile);
+	if(err < 0) {
+		printk(KERN_INFO "Error opening output file  %s:%d", params->outfile, err);
+		goto clean_all;
+
 	}
 	for (i = 0; i < params->infile_count; i++) {
 		ret = 0;
@@ -141,11 +154,14 @@ long read_write(struct syscall_params *params)
 		} while (ret == BUFFER_SIZE);
 		file_close(infile);
 	}
-	//TODO cleanup code on error
-	kfree(data);
 	file_sync(outfile);
+	err = 0;
+	//TODO cleanup code on error
+	clean_all:
+	kfree(data);
+	clean_files:
 	file_close(outfile);
-	return 0;
+	return err;
 
 }
 
