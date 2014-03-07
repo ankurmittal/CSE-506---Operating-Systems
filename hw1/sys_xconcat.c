@@ -4,7 +4,7 @@
 #include <linux/moduleloader.h>
 #include <asm/segment.h>
 #include <asm/page.h>
-#include <asm/uaccess.h>
+#include <linux/uaccess.h>
 #include <linux/uaccess.h>
 #define BUFFER_SIZE PAGE_SIZE
 #define DEBUGGING 1
@@ -53,9 +53,8 @@ int file_open(const char *path, int flags, int rights, struct file **fileptr)
 
 void file_close(struct file *file)
 {
-	if(file != NULL) {
+	if (file != NULL)
 		filp_close(file, NULL);
-	}
 }
 
 int file_read(struct file *file, unsigned long long offset,
@@ -98,14 +97,13 @@ long read_write(struct syscall_params *params)
 {
 	int i, ret, count, bytes_written = 0, err = 0;
 	//TODO support flags
-	struct file *infile = NULL,*outfile = NULL;
+	struct file *infile = NULL, *outfile = NULL;
 	unsigned char *data = kmalloc(sizeof(char)*BUFFER_SIZE, GFP_KERNEL);
-	if(data == NULL) {
+	if (!data)
 		return -ENOMEM;
-	}
 	err = file_open(params->outfile,
 			O_WRONLY|O_APPEND, params->mode, &outfile);
-	if((err == -ENOENT && (params->oflags & O_CREAT) == 0)
+	if ((err == -ENOENT && (params->oflags & O_CREAT) == 0)
 			|| (err < 0 && err != -ENOENT)) {
 		printk(KERN_INFO "Error opening output file  %s:%d", params->outfile, err);
 		goto clean_all;
@@ -118,7 +116,7 @@ long read_write(struct syscall_params *params)
 					params->infiles[i], err);
 			goto clean_all;
 		}
-		if(infile->f_dentry->d_inode == outfile->f_dentry->d_inode){
+		if (outfile && infile->f_dentry->d_inode == outfile->f_dentry->d_inode) {
 			err = -EPERM;
 			goto clean_all;
 		}
@@ -127,7 +125,7 @@ long read_write(struct syscall_params *params)
 	file_close(outfile);
 	err = file_open(params->outfile,
 			O_WRONLY|params->oflags, params->mode, &outfile);
-	if(err < 0) {
+	if (err < 0) {
 		printk(KERN_INFO "Error opening output file  %s:%d", params->outfile, err);
 		goto clean_all;
 
@@ -137,16 +135,14 @@ long read_write(struct syscall_params *params)
 		count = 0;
 		/*TODO:need to check read access*/
 		err = file_open(params->infiles[i], O_RDONLY, 0, &infile);
-		if(err < 0){
-			printk("error:%d",err);
+		if (err < 0) {
+			printk("error:%d", err);
 			return err;
 		}
-		printk("err: %d",err);
+		printk("err: %d", err);
 		do {
 			ret = file_read(infile, count*BUFFER_SIZE,
 					data, BUFFER_SIZE);
-			if (ret < BUFFER_SIZE)
-				data[ret] = 0;
 			count++;
 			bytes_written += file_write(outfile,
 					bytes_written, data, ret);
@@ -157,9 +153,9 @@ long read_write(struct syscall_params *params)
 	file_sync(outfile);
 	err = 0;
 	//TODO cleanup code on error
-	clean_all:
+clean_all :
 	kfree(data);
-	clean_files:
+clean_files:
 	file_close(outfile);
 	return err;
 
@@ -171,34 +167,32 @@ long check_passed_args(void *arg, int argslen, struct syscall_params **p)
 	int i = 0;
 	const char **infiles = NULL;
 	struct syscall_params *q;
-	if(sizeof(struct syscall_params) != argslen) {
+	if (sizeof(struct syscall_params) != argslen)
 		return -EINVAL;
-	}
 	err = access_ok(VERIFY_READ, arg, argslen);
-	if(err < 0) {
+	if (err < 0)
 		return -EINVAL;
-	}
 	*p = kmalloc(sizeof(struct syscall_params), GFP_KERNEL);
 	q = *p;
 	err = copy_from_user(q, arg, argslen);
-	if(err > 0) {
+	if (err > 0) {
 		err = -EINVAL;
 		goto cleanup;
 	}
-	if(q->infile_count <= 0) {
+	if (q->infile_count <= 0) {
 		err = -EINVAL;
 		goto cleanup;
 	}
 	infiles = kmalloc(sizeof(char *)*(q->infile_count), GFP_KERNEL);
-	for(i = 0; i < q->infile_count; i++) {
+	for (i = 0; i < q->infile_count; i++) {
 		infiles[i] = getname(q->infiles[i]);
-		if(*infiles[i] < 0) {
+		if (*infiles[i] < 0) {
 			err = (int) *infiles[i];
 			goto cleanup;
 		}
 	}
 	q->outfile = getname(q->outfile);
-	if(*q->outfile < 0) {
+	if (*q->outfile < 0) {
 		err = (int) *q->outfile;
 		goto cleanup;
 	}
@@ -207,13 +201,11 @@ long check_passed_args(void *arg, int argslen, struct syscall_params **p)
 
 cleanup:
 	i--;
-	while(i >= 0) {
+	while (i >= 0) {
 		putname(infiles[i]);
 		i--;
 	}
-	if(infiles) {
-		kfree(infiles);
-	}
+	kfree(infiles);
 	kfree(*p);
 	return err;
 }
@@ -221,9 +213,9 @@ cleanup:
 asmlinkage long xconcat(void *arg, int argslen)
 {
 	struct syscall_params *p;
-	int i=0;
+	int i = 0;
 	int err = 0;
-	if (arg == NULL)
+	if (!arg)
 		return -EINVAL;
 	else {
 		//check this
@@ -231,16 +223,15 @@ asmlinkage long xconcat(void *arg, int argslen)
 
 		argslen = sizeof(struct syscall_params);
 		err = check_passed_args(arg, argslen, &p);
-		if(err < 0) {
+		if (err < 0)
 			return err;
-		}
 		//TODO implement atomic func for extra credit
 #if DEBUGGING
 		showArgs(p);
 #endif
 		err = read_write(p);
 		i = p->infile_count - 1;
-		while(i >= 0) {
+		while (i >= 0) {
 			putname(p->infiles[i]);
 			i--;
 		}
