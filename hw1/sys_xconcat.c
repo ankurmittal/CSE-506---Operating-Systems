@@ -361,8 +361,6 @@ asmlinkage long xconcat(void *arg, int argslen)
 	if (!arg)
 		return -EINVAL;
 	else {
-		printk("arglen: %d", argslen);
-
 		err = check_passed_args(arg, argslen, &p);
 		if (err < 0)
 			return err;
