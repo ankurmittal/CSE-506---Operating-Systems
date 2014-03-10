@@ -64,7 +64,7 @@ void parseOptions(int argc, char *argv[], struct option_args *options)
 			printf("\t-h: print short usage string\n");
 			exit(0);
 		case 'm':
-			options->mode_set = 0 ;
+			options->mode_set = 1 ;
 			options->mode_arg = strtol(optarg, NULL, 8);
 			break;
 		case '?':
@@ -97,20 +97,24 @@ int main(int argc, char *argv[])
 	sys_param.infiles = malloc(sizeof(char *)*(sys_param.infile_count));
 	for (index = optind + 1; index < argc; index++)
 		sys_param.infiles[index-optind-1] = argv[index];
+	if(options.mode_set)
+		sys_param.mode = options.mode_arg;
+	else
+		sys_param.mode = 0644;
 	sys_param.oflags = options.output_mode;
+
 	sys_param.flags = (options.return_no_of_files * 1)
 			| (options.atomic_concat_mode * 4)
 			| (options.return_percent_data * 2);
-	sys_param.mode = options.mode_arg;
 	void *p = ((void *) &sys_param);
 
-	rc = syscall(__NR_xconcat, p, 2);
+	rc = syscall(__NR_xconcat, p, sizeof(sys_param));
 	if (rc == 0)
 		printf("syscall returned %d\n", rc);
 	else
 		{
 			printf("syscall returned %d (errno=%d)\n", rc, errno);
-			perror("Error from Syscall: ");
+			perror("Message from Syscall");
 		}
 
 	exit(rc);

@@ -238,6 +238,11 @@ long check_passed_args(void *arg, int argslen, struct syscall_params **p)
 		err = -EINVAL;
 		goto cleanup;
 	}
+	if((q->oflags & (O_APPEND | O_CREAT | O_TRUNC | O_EXCL)) != q->oflags) {
+		 printk(KERN_INFO "Open flags are incorrect: %d %d",q->oflags, (q->oflags & (O_APPEND | O_CREAT | O_TRUNC | O_EXCL)));
+		 err = -EINVAL;
+		 goto cleanup;
+	}
 	if(q->flags == 3 || q->flags > 6) {
 		printk(KERN_INFO "Extra flags are incorrect: %d", q->flags);
 		err = -EINVAL;
