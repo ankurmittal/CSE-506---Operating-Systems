@@ -69,9 +69,11 @@ void parseOptions(int argc, char *argv[], struct option_args *options)
 			break;
 		case '?':
 			if (optopt == 'm')
-				fprintf(stderr, "Option -%c requires an argument.\n", optopt);
+				fprintf(stderr,
+					"Option -%c requires an argument.\n", optopt);
 			else
-				fprintf(stderr, "Unknown option `-%c'.\n", optopt);
+				fprintf(stderr,
+					"Unknown option `-%c'.\n", optopt);
 			exit(1);
 		default:
 			abort();
