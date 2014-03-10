@@ -34,6 +34,13 @@ void showArgs(struct syscall_params *params)
 }
 #endif
 
+/**
+* file_open() - Wrapper to open file
+* @path - File path
+* @flags - Open flags
+* @rights - File writes when new file is created
+* @fileptr - This stores the poiter to opened file
+*/
 int file_open(const char *path, int flags, int rights, struct file **fileptr)
 {
 	struct file *filp = NULL;
@@ -51,6 +58,10 @@ int file_open(const char *path, int flags, int rights, struct file **fileptr)
 	return 0;
 }
 
+/**
+* file_close() - Wrapper to close file
+* @file - The file to close
+*/
 void file_close(struct file **file)
 {
 	if (*file != NULL)
@@ -59,6 +70,13 @@ void file_close(struct file **file)
 
 }
 
+/**
+* file_read() - Wrapper function to read from file.
+* @file - File to read from.
+* @offset - The starting offset
+* @data - data buffer to read into
+* @size - the size of data to read
+*/
 int file_read(struct file *file, unsigned long long offset,
 		unsigned char *data, unsigned int size)
 {
@@ -74,6 +92,13 @@ int file_read(struct file *file, unsigned long long offset,
 	return ret;
 }
 
+/**
+* file_write() - Wrapper function to write to file.
+* @file - File to write to.
+* @offset - The starting offset
+* @data - data to write
+* @size - the size of data to write
+*/
 int file_write(struct file *file, unsigned long long offset,
 		unsigned char *data, unsigned int size)
 {
@@ -89,12 +114,24 @@ int file_write(struct file *file, unsigned long long offset,
 	return ret;
 }
 
+/**
+* file_syn() - Flushes file content
+* @file File to flush
+*/
 int file_sync(struct file *file)
 {
 	vfs_fsync(file, 0);
 	return 0;
 }
 
+
+/**
+* read_write() - Performs actual read and write
+* @params - Kernel parameters containing flags, output file and input file
+*
+* This function performs various validation checks on files and then copies
+* content of input file to output file.
+*/
 long read_write(struct syscall_params *params)
 {
 	int i, ret, count, bytes_written = 0, err = 0, bytes_read = 0;
@@ -220,6 +257,12 @@ file_close(infiles);
 
 }*/
 
+/**
+* check_passed_args() - Checks user passed parameters
+* @arg - Argument passed from user
+* @argslen - The lenght of Argument passed by user
+* @p - Kernel structure pointer to store user parameters
+*/
 long check_passed_args(void *arg, int argslen, struct syscall_params **p)
 {
 	long err = 0;
@@ -259,14 +302,35 @@ long check_passed_args(void *arg, int argslen, struct syscall_params **p)
 		err = -EINVAL;
 		goto cleanup;
 	}
+	if (!q->infiles) {
+		printk(KERN_INFO "Infile is null");
+		err = -EINVAL;
+		goto cleanup;
+	}
+
+	if (!q->outfile) {
+		printk(KERN_INFO "OutFile is null");
+		err = -EINVAL;
+		goto cleanup;
+	}
+
 	infiles = kmalloc(sizeof(char *)*(q->infile_count), GFP_KERNEL);
 	for (i = 0; i < q->infile_count; i++) {
+
+		if (!q->infiles[i]) {
+			printk(KERN_INFO "Infile[%d] is null", i);
+			err = -EINVAL;
+			goto cleanup;
+		}
+
 		infiles[i] = getname(q->infiles[i]);
 		if (*infiles[i] < 0) {
 			err = (int) *infiles[i];
 			goto cleanup;
 		}
 	}
+
+
 	q->outfile = getname(q->outfile);
 	if (*q->outfile < 0) {
 		err = (int) *q->outfile;
@@ -286,6 +350,11 @@ cleanup:
 	return err;
 }
 
+/**
+* xconcat() - The syscall function
+* @arg - User parameters
+* @argslen - The lenght of user parameters
+*/
 asmlinkage long xconcat(void *arg, int argslen)
 {
 	struct syscall_params *p;

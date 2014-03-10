@@ -70,7 +70,8 @@ void parseOptions(int argc, char *argv[], struct option_args *options)
 		case '?':
 			if (optopt == 'm')
 				fprintf(stderr,
-					"Option -%c requires an argument.\n", optopt);
+					"Option -%c requires an argument.\n",
+						optopt);
 			else
 				fprintf(stderr,
 					"Unknown option `-%c'.\n", optopt);
@@ -109,8 +110,9 @@ int main(int argc, char *argv[])
 			| (options.atomic_concat_mode * 4)
 			| (options.return_percent_data * 2);
 	void *p = ((void *) &sys_param);
-
+	printf("hi");
 	rc = syscall(__NR_xconcat, p, sizeof(sys_param));
+	printf("bye");
 	if (rc == 0)
 		printf("syscall returned %d\n", rc);
 	else {
