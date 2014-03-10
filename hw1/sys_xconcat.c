@@ -98,7 +98,6 @@ int file_sync(struct file *file)
 long read_write(struct syscall_params *params)
 {
 	int i, ret, count, bytes_written = 0, err = 0, bytes_read = 0;
-	//TODO support flags
 	struct file *infile = NULL, *outfile = NULL;
 	unsigned char *data = kmalloc(sizeof(char)*BUFFER_SIZE, GFP_KERNEL);
 	if (!data)
@@ -107,7 +106,8 @@ long read_write(struct syscall_params *params)
 			O_WRONLY|O_APPEND, params->mode, &outfile);
 	if ((err == -ENOENT && (params->oflags & O_CREAT) == 0)
 			|| (err < 0 && err != -ENOENT)) {
-		printk(KERN_INFO "Error opening output file  %s:%d", params->outfile, err);
+		printk(KERN_INFO "Error opening output file  %s:%d",
+				params->outfile, err);
 		goto clean_all;
 	}
 
@@ -118,7 +118,8 @@ long read_write(struct syscall_params *params)
 					params->infiles[i], err);
 			goto clean_all;
 		}
-		if (outfile && infile->f_dentry->d_inode == outfile->f_dentry->d_inode) {
+		if (outfile &&
+		infile->f_dentry->d_inode == outfile->f_dentry->d_inode) {
 			err = -EPERM;
 			goto clean_all;
 		}
@@ -128,7 +129,8 @@ long read_write(struct syscall_params *params)
 	err = file_open(params->outfile,
 			O_WRONLY|params->oflags, params->mode, &outfile);
 	if (err < 0) {
-		printk(KERN_INFO "Error opening output file  %s:%d", params->outfile, err);
+		printk(KERN_INFO "Error opening output file  %s:%d",
+			params->outfile, err);
 		goto clean_all;
 
 	}
@@ -147,7 +149,7 @@ long read_write(struct syscall_params *params)
 					data, BUFFER_SIZE);
 			if (ret < 0) {
 				file_close(&infile);
-				printk(KERN_INFO "Error reading from file. Returning. Error Code:%d", ret);
+				printk(KERN_INFO "Error reading from file. Error Code:%d", ret);
 				goto return_back;
 			}
 			count++;
@@ -163,15 +165,13 @@ return_back:
 	file_sync(outfile);
 	if (params->flags == 0x00)
 		err = bytes_written;
-	else if ((params->flags & 0x02) == 0x02) {
+	else if ((params->flags & 0x02) == 0x02)
 		err = (bytes_written * 100) / bytes_read;
-	}
-	else if ((params->flags & 0x01) == 0x01) {
+	else if ((params->flags & 0x01) == 0x01)
 		err = i;
-	} else {
+	else
 		err = bytes_written;
-	}
-clean_all :
+clean_all:
 	kfree(data);
 	file_close(&outfile);
 	return err;
@@ -238,12 +238,13 @@ long check_passed_args(void *arg, int argslen, struct syscall_params **p)
 		err = -EINVAL;
 		goto cleanup;
 	}
-	if((q->oflags & (O_APPEND | O_CREAT | O_TRUNC | O_EXCL)) != q->oflags) {
-		 printk(KERN_INFO "Open flags are incorrect: %d %d",q->oflags, (q->oflags & (O_APPEND | O_CREAT | O_TRUNC | O_EXCL)));
+	if ((q->oflags & (O_APPEND | O_CREAT | O_TRUNC | O_EXCL))
+			!= q->oflags) {
+		 printk(KERN_INFO "Open flags are incorrect: %d", q->oflags);
 		 err = -EINVAL;
 		 goto cleanup;
 	}
-	if(q->flags == 3 || q->flags > 6) {
+	if (q->flags == 3 || q->flags > 6) {
 		printk(KERN_INFO "Extra flags are incorrect: %d", q->flags);
 		err = -EINVAL;
 		goto cleanup;
@@ -288,18 +289,16 @@ asmlinkage long xconcat(void *arg, int argslen)
 	if (!arg)
 		return -EINVAL;
 	else {
-		//check this
 		printk("argl: %d", argslen);
 
 		argslen = sizeof(struct syscall_params);
 		err = check_passed_args(arg, argslen, &p);
 		if (err < 0)
 			return err;
-		//TODO implement atomic func for extra credit
 #if DEBUGGING
 		showArgs(p);
 #endif
-		if((p->flags == 0x04))
+		if ((p->flags == 0x04))
 			err = read_write(p);
 		else
 			err = read_write(p);

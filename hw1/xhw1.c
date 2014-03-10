@@ -97,7 +97,7 @@ int main(int argc, char *argv[])
 	sys_param.infiles = malloc(sizeof(char *)*(sys_param.infile_count));
 	for (index = optind + 1; index < argc; index++)
 		sys_param.infiles[index-optind-1] = argv[index];
-	if(options.mode_set)
+	if (options.mode_set)
 		sys_param.mode = options.mode_arg;
 	else
 		sys_param.mode = 0644;
@@ -111,11 +111,10 @@ int main(int argc, char *argv[])
 	rc = syscall(__NR_xconcat, p, sizeof(sys_param));
 	if (rc == 0)
 		printf("syscall returned %d\n", rc);
-	else
-		{
-			printf("syscall returned %d (errno=%d)\n", rc, errno);
-			perror("Message from Syscall");
-		}
+	else {
+		printf("syscall returned %d (errno=%d)\n", rc, errno);
+		perror("Message from Syscall");
+	}
 
 	exit(rc);
 	return 0;
