@@ -11,7 +11,4 @@ WORKING FUNCTIONALITY:
 	3. Correctness of the syscall behavior
 	4. Error Handling
 
-THINGS OF WORKING
-	1. Not able to pass second argument to syscall due to kernel config issues.
-
 NOTE: Did NOT implement Atomic mode
