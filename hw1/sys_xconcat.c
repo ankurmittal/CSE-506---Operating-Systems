@@ -238,6 +238,11 @@ long check_passed_args(void *arg, int argslen, struct syscall_params **p)
 		err = -EINVAL;
 		goto cleanup;
 	}
+	if (q->mode > 0777) {
+		 printk(KERN_INFO "Mode is incorrect: %o", q->mode);
+		 err = -EINVAL;
+		 goto cleanup;
+	}
 	if ((q->oflags & (O_APPEND | O_CREAT | O_TRUNC | O_EXCL))
 			!= q->oflags) {
 		 printk(KERN_INFO "Open flags are incorrect: %d", q->oflags);
