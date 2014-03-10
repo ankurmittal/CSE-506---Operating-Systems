@@ -1,1 +1,17 @@
-XXX: fill in
+			Operating Systems : Homework 1
+
+
+Code Refered From internet:
+	1. The read write code was refered from  http://stackoverflow.com/questions/1184274/how-to-read-write-files-within-a-linux-kernel-module/1184346#1184346
+	2. getopt code was refered from http://www.gnu.org/software/libc/manual/html_node/Example-of-Getopt.html#Example-of-Getopt
+
+Working Functionality:
+	1. Correctness of the output file
+	2. Correctness of the syscall return value
+	3. Correctness of the syscall behavior
+	4. Error Handling
+
+Things Not working
+	1. Not able to pass second argument to syscall due to kernel config issues.
+
+NOTE: Did NOT implement Atomic mode
