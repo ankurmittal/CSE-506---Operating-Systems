@@ -28,7 +28,7 @@ void parseOptions(int argc, char *argv[], struct option_args *options)
 {
 	int c;
 	opterr = 0;
-	while ((c = getopt(argc, argv, "acteANPmh:")) != -1) {
+	while ((c = getopt(argc, argv, "acteANPm:h?")) != -1) {
 		switch (c) {
 		case 'a':
 			options->output_mode |= O_APPEND;
@@ -52,14 +52,23 @@ void parseOptions(int argc, char *argv[], struct option_args *options)
 			options->return_percent_data = 1;
 			break;
 		case 'h':
-			options->print_short_usuage_string = 1;
-			break;
+			printf("Usage: ./xhw1 [flags] outfile infile1 infile2 ...\n");
+			printf("\t-a: append mode (O_APPEND)\n");
+			printf("\t-c: O_CREATE\n");
+			printf("\t-t: O_TRUNC\n");
+			printf("\t-e: O_EXCL\n");
+			printf("\t-A: Atomic concat mode\n");
+			printf("\t-N: return num-files instead of num-bytes written\n");
+			printf("\t-P: return percentage of data written out\n");
+			printf("\t-m ARG: set default mode to ARG\n");
+			printf("\t-h: print short usage string\n");
+			exit(0);
 		case 'm':
 			options->mode_set = 0 ;
-			options->mode_arg = *optarg;
+			options->mode_arg = strtol(optarg, NULL, 8);
 			break;
 		case '?':
-			if (optopt == 'c')
+			if (optopt == 'm')
 				fprintf(stderr, "Option -%c requires an argument.\n", optopt);
 			else
 				fprintf(stderr, "Unknown option `-%c'.\n", optopt);
@@ -89,14 +98,20 @@ int main(int argc, char *argv[])
 	for (index = optind + 1; index < argc; index++)
 		sys_param.infiles[index-optind-1] = argv[index];
 	sys_param.oflags = options.output_mode;
-	sys_param.flags = 1;
+	sys_param.flags = (options.return_no_of_files * 1)
+			| (options.atomic_concat_mode * 4)
+			| (options.return_percent_data * 2);
+	sys_param.mode = options.mode_arg;
 	void *p = ((void *) &sys_param);
 
 	rc = syscall(__NR_xconcat, p, 2);
 	if (rc == 0)
 		printf("syscall returned %d\n", rc);
 	else
-		printf("syscall returned %d (errno=%d)\n", rc, errno);
+		{
+			printf("syscall returned %d (errno=%d)\n", rc, errno);
+			perror("Error from Syscall: ");
+		}
 
 	exit(rc);
 	return 0;
