@@ -7,7 +7,7 @@
 #include <linux/uaccess.h>
 #include <linux/uaccess.h>
 #define BUFFER_SIZE PAGE_SIZE
-#define DEBUGGING 1
+#define DEBUGGING 0
 
 struct syscall_params {
 	const char *outfile; /*name of output file*/

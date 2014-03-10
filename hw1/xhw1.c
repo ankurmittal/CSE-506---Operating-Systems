@@ -111,16 +111,16 @@ int main(int argc, char *argv[])
 		| (options.return_percent_data * 2);
 	void *p = ((void *) &sys_param);
 	rc = syscall(__NR_xconcat, p, sizeof(sys_param));
-	if(rc < 0) {
+	if (rc < 0) {
 		printf("syscall returned %d (errno=%d)\n", rc, errno);
 		perror("Message from Syscall");
 	} else {
 		if (options.return_no_of_files)
-			printf("Number of bytes written: %d\n",rc);
+			printf("Number of bytes written: %d\n", rc);
 		else if (options.return_percent_data)
 			printf("Percent bytes written: %d\n", rc);
 		else
-			printf("Number of bytes written: %d\n",rc);
+			printf("Number of bytes written: %d\n", rc);
 	}
 	exit(rc);
 	return 0;
