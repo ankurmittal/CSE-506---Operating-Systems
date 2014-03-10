@@ -180,7 +180,6 @@ long read_write(struct syscall_params *params)
 			printk("error:%d", err);
 			goto return_back;
 		}
-		printk("err: %d", err);
 		do {
 			ret = file_read(infile, count*BUFFER_SIZE,
 					data, BUFFER_SIZE);
@@ -194,7 +193,6 @@ long read_write(struct syscall_params *params)
 			bytes_written += file_write(outfile,
 					bytes_written, data, ret);
 
-			printk(KERN_INFO "bytes_written, %d", bytes_written);
 		} while (ret == BUFFER_SIZE);
 		file_close(&infile);
 	}
@@ -363,9 +361,8 @@ asmlinkage long xconcat(void *arg, int argslen)
 	if (!arg)
 		return -EINVAL;
 	else {
-		printk("argl: %d", argslen);
+		printk("arglen: %d", argslen);
 
-		argslen = sizeof(struct syscall_params);
 		err = check_passed_args(arg, argslen, &p);
 		if (err < 0)
 			return err;
