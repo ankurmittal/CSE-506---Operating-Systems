@@ -107,19 +107,21 @@ int main(int argc, char *argv[])
 	sys_param.oflags = options.output_mode;
 
 	sys_param.flags = (options.return_no_of_files * 1)
-			| (options.atomic_concat_mode * 4)
-			| (options.return_percent_data * 2);
+		| (options.atomic_concat_mode * 4)
+		| (options.return_percent_data * 2);
 	void *p = ((void *) &sys_param);
-	printf("hi");
 	rc = syscall(__NR_xconcat, p, sizeof(sys_param));
-	printf("bye");
-	if (rc == 0)
-		printf("syscall returned %d\n", rc);
-	else {
+	if(rc < 0) {
 		printf("syscall returned %d (errno=%d)\n", rc, errno);
 		perror("Message from Syscall");
+	} else {
+		if (options.return_no_of_files)
+			printf("Number of bytes written: %d\n",rc);
+		else if (options.return_percent_data)
+			printf("Percent bytes written: %d\n", rc);
+		else
+			printf("Number of bytes written: %d\n",rc);
 	}
-
 	exit(rc);
 	return 0;
 }
