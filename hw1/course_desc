@@ -1,0 +1,423 @@
+		 CSE-506 (Spring 2014) Homework Assignment #1
+			      Handout number 2
+		  (100 points, 12% of your overall grade)
+			   Version 2 (2/12/2014)
+		       Due Sunday 03/09/2014 @ 11:59pm
+
+* PURPOSE:
+
+To get your Linux kernel development environment working; to make small
+changes to the kernel and test them out; to learn about system calls.
+
+* BACKGROUND:
+
+Concatenating or merging several files into one is a common task that many
+users perform in the user level.  Alas, it takes a lot of I/O and data
+copies between the user /bin/cat process and the kernel.  Your task is to
+create a new system call that can concatenate one or more files into a
+destination target file.
+
+Note that while we give you more details below, it is up to you to inspect
+the kernel sources to find out similar helpful examples of code; those will
+provide you with even greater details than what we provide here.
+
+The expected amount of written code for this assignment would be about
+500-700 lines of kernel code, and another 100-200 lines of user-level code.
+Note, however, that a lot of time may be spent reading existing sources and
+debugging the code you write.
+
+* TASK:
+
+Create a Linux kernel module (in vanilla 3.2.y Linux that's in your HW1 GIT
+repository) that, when loaded into Linux, will support a new multi-mode
+system call called
+
+	int sys_xconcat(void *args, int argslen)
+
+The reason I want you to use one system call for with a single void* is
+because we'll be using only ONE system call as if it's multiple ones, and it
+would allow us to change the number and types of args we want to pass.  The
+"trick" would be that you'd be passing a void* generic pointer to the
+syscall, but inside of it you'd be packing all the args you need for
+different modes of this system call.  Note: "argslen" is the length of the
+void* buffer that the kernel should access.
+
+Arguments to pack inside void*:
+	__user const char *outfile; // name of output file
+	__user const char **infiles; // array with names of input files
+	unsigned int infile_count; // number of input files in infiles array
+	int oflags; // Open flags to change behavior of syscall
+	mode_t mode; // default permission mode for newly created outfile
+	unsigned int flags; // special flags to change behavior of syscall
+
+Return value: number of bytes successfully concatenated on success;
+appropriate -errno on failure
+
+Your system call should open each of the files listed in infiles, in order,
+read their content, and then concatenate the their content into the file
+named in outfile.  In Unix, this can be achieved by the cat(1) utility, for
+example:
+
+$ /bin/cat file1 file2 file3 > newfile
+
+The newly created file should have a permission mode as defined in the
+'mode' parameter.  See open(2) or creat(2) for description of this
+parameter.
+
+The oflags parameter should behave exactly as the open-flags parameter to the
+open(2) syscall; consult the man page for more info.  You should support
+the following flags only (they only affect the outfile): O_APPEND, O_CREAT,
+O_TRUNC, O_EXCL.
+
+In addition, the flags parameter will have the following special behavior,
+depending on its value:
+
+0x00: no change in behavior (default)
+0x01: return num-files instead of number of bytes written
+0x02: return percentage of total data written out
+0x04: "atomic" concatenation mode (for extra credit, see below)
+
+Normally, the system call should return to the user-level caller the number
+of bytes successfully written to the output file.  If the 0x01 flag is
+given, it should return the number of files whose data was successfully read
+and written to the output file.  If the 0x02 flag is given, the system call
+should return the percentage of total bytes, out of all input files, that
+were written out to the output file (percentage should be an integer scaled
+0 to 100, rounded as needed).
+
+***
+
+The most important thing system calls do first is ensure the validity of the
+input they are given.  You must check for ALL possible bad conditions that
+could occur as the result of bad inputs to the system call.  In that case,
+the system call should return the proper errno value (EINVAL, EPERM, EACCESS,
+etc.)  Consult the system errno table and pick the right error numbers for
+different conditions.
+
+The kinds of errors that could occur early during the system call's
+execution are as follows (this is a non-exhaustive list):
+
+- missing arguments passed
+- null arguments
+- pointers to bad addresses
+- buffers and their declared lengths don't match
+- invalid flags
+- file(s) cannot be opened, read, written
+- ANYTHING else you can think of (the more error checking you do, the better)
+
+Your code must be efficient.  Therefore, do not waste extra kernel memory
+(dynamic or stack) for the system call.  Make sure you're not leaking any
+memory.  On the other hand, for efficiency, you should read in data in
+chunks that are native to the system this code is compiled on, the system
+page size (PAGE_CACHE_SIZE or PAGE_SIZE).  Hint: allocate one page as
+temporary buffer.
+
+If no error occurred, your syscall should return the number of bytes
+successfully written to the calling process.  If an error occurred, it
+should return -1 and ensure that errno is set for the calling process.
+Choose your errno's appropriately.
+
+Write a C program called "xhw1" that will call your syscall in its
+different modes.  The program output some indication of success and use
+perror() to print out information about what errors occurred.  The program
+should take three arguments in the following order:
+
+	./xhw1 [flags] outfile infile1 infile2 ...
+
+where flags is
+
+-a: append mode (O_APPEND)
+-c: O_CREATE
+-t: O_TRUNC
+-e: O_EXCL
+-A: Atomic concat mode (extra credit only)
+-N: return num-files instead of num-bytes written
+-P: return percentage of data written out
+-m ARG: set default mode to ARG (e.g., octal 755, see chmod(2) and umask(1))
+-h: print short usage string
+
+Note: use getopt(3) to process options in userland.
+
+* SYSTEM CALLS IN Linux Kernel 3.x:
+
+As of kernel 2.6, a kernel module is not allowed to override system calls
+(long story, I'll tell you in class :-) So the kernel I give you will
+already be patched to support one extra system call.  That syscall takes
+only one parameter: a "void*", into which you'd have to pack your args
+depending on the mode.
+
+* A WORKING TEMPLATE
+
+To make getting started easier, we've provided you with a working template
+and your own Virtual Machine (VM).  The template VM includes a working
+pre-compiled Linux kernel.  See the online class instructions how to start
+your own VM (using VMware VSphere client) and login to it.  In this
+assignment, you will do all programming in your own personal VM.
+
+To login as root, get the root password first:
+
+1. login to the scm machine, then run
+2. cat /scm/cse506git-s14/.p
+3. once you login as root to your VM, change the root passwd asap with the
+   command "passwd root" and follow the prompts.
+
+You will have to login as root to your own VM, then you'll need to compile
+the kernel and the test software:
+
+# cd /usr/src
+# git clone ssh://USER@scm.cs.stonybrook.edu:130/scm/cse506git-s14/hw1-USER
+	(where "USER" is your CS userid)
+# ln -s hw1-USER wrapfs-3.2.y
+# cd hw1-USER
+# make config
+	NOTE: Check online instructions how to configure a minimal kernel.
+	      your hw1 will be graded on this minimal configured kernel.
+	      Refer to "SUBMISSION" section for details.
+# make
+# make modules
+# make modules_install install
+# reboot
+	Ensure you've booted into the 3.2.2 kernel...
+# cd /usr/src/hw1-USER/hw1
+# make
+	To build the HW1 sample files.
+
+Check the source files in the hw1 subdir and study them.  The
+sys_xconcat.c implements a dummy system call that simply returns 0 if you
+pass a non-null argument to the system call, and returns EINVAL if you pass
+zero.  This is your syscall template to implement.
+
+The xhw1.c file is a sample user level program to pass a number to the
+system call.  And the install_module.sh script is used to load up the new
+kernel module (and unload an old one first, if any).  To test this system
+call, try this:
+
+# sh install_module.sh
+# dmesg | tail
+	(use this optional command to see the kernel modules loaded.
+	 You'll see some messages when a module is un/loaded.)
+# ./xhw1 17
+syscall returned 0
+# ./xhw1 0
+syscall returned -1 (errno=22)
+
+Note that the system call is designed to pass one "void*" arg from userland
+to the kernel.  So, in order to pass multiple arguments, pack them into a
+single void*, for example:
+
+struct myargs {
+	int arg1;
+	char arg2[24];
+};
+struct myargs args;
+args.arg1 = 100;
+strcpy(args.arg2, "hello world");
+rc = mysyscall((void *) &args);
+
+* READING FILES FROM INSIDE THE KERNEL
+
+Here's an example function that can open a file from inside the kernel, read
+some data off of it, then close it.  This will help you in this assignment.
+You can easily extrapolate from this how to write data to another file.
+(Warning: the code below is from 2.4 and is thus old!  Adapt it as needed.)
+
+/*
+ * Read "len" bytes from "filename" into "buf".
+ * "buf" is in kernel space.
+ */
+int
+wrapfs_read_file(const char *filename, void *buf, int len)
+{
+    struct file *filp;
+    mm_segment_t oldfs;
+    int bytes;
+    				/* Chroot? Maybe NULL isn't right here */
+    filp = filp_open(filename, O_RDONLY, 0);
+    if (!filp || IS_ERR(filp)) {
+	printk("wrapfs_read_file err %d\n", (int) PTR_ERR(filp));
+	return -1;  /* or do something else */
+    }
+
+    if (!filp->f_op->read)
+	return -2;  /* file(system) doesn't allow reads */
+
+    /* now read len bytes from offset 0 */
+    filp->f_pos = 0;		/* start offset */
+    oldfs = get_fs();
+    set_fs(KERNEL_DS);
+    bytes = filp->f_op->read(filp, buf, len, &filp->f_pos);
+    set_fs(oldfs);
+
+    /* close the file */
+    filp_close(filp, NULL);
+
+    return bytes;
+}
+
+* TESTING YOUR CODE:
+
+You may choose to hard-code the syscall into your kernel, or do it as a
+loadable kernel module (loadable kernel modules makes it easier to
+unload/reload a new version of the code).  Write user-level code to test
+your program carefully.
+
+If you choose a kernel module, then once your module is loaded, the new
+system call behavior should exist, and you can run your program on various
+input files.  Check that each error condition you coded for works as it
+should.  Check that the modified file is changed correctly.
+
+Finally, although you may develop your code on any Linux machine, we will
+test your code using the same Virtual Machine distribution (with all
+officially released patches applied as of the date this assignment is
+released), and using the Linux 3.2.y kernel.  It is YOUR responsibility to
+ensure that your code runs well under these conditions.  We will NOT test or
+demo your code on your own machine or laptop!  So please plan your work
+accordingly to allow yourself enough time to test your code on the machines
+for which we have given you a login account (these are the same exact
+machines we will test your code on when we grade it).
+
+Additionally, we strongly suggest that you enable CONFIG_DEBUG_SLAB and
+other useful debugging features under the "Kernel hacking" configuration
+menu.  When grading the homework, we will use a kernel tuned for
+debugging---which may expose bugs in your code that you can't easily catch
+without debugging support.  So it's better for YOU to have caught and fixed
+those bugs before we do.
+
+Lastly, note that even if your system call appears to work well, it's
+possible that you've corrupted some memory state in the kernel, and you may
+not notice the impact until much later.  If your code begins behaving
+strangely after having worked better before, consider rebooting your VM.
+
+* STYLE AND MORE:
+
+Aside from testing the proper functionality of your code, we will also
+carefully evaluate the quality of your code.  Be sure to use a consistent
+style, well documented, and break your code into separate functions and/or
+source files as it makes sense.
+
+To be sure your code is very clean, it should compile with "gcc -Wall
+-Werror" without any errors or warnings!  We'll deduct points for any
+warning that we feel should be easy to fix.
+
+Read Documentation/CodingStyle to understand which coding style is preferred
+in the kernel and stick to it for this assignment.  Run your kernel code
+through the syntax checker in scripts/checkpatch.pl (with the "strict"
+option turned on), and fix every warning that comes up.  Cleaner code tends
+to be less buggy.
+
+If the various sources you use require common definitions, then do not
+duplicate the definitions.  Make use of C's code-sharing facilities such as
+common header files.
+
+You must include a README file with this and any assignment. The README file
+should briefly describe what you did, what approach you took, results of any
+measurements you might have made, which files are included in your
+submission and what they are for, etc.  Feel free to include any other
+information you think is helpful to us in this README; it can only help your
+grade (esp. for Extra Credit).
+
+* SUBMISSION
+
+You will need to submit all of your sources, headers, scripts, Makefiles,
+and README.  Submit all of your files using GIT.  See general GIT submission
+guidelines on the class Web site.
+
+As part of this assignment, you should also build a 3.2.y kernel that's as
+small as you can get (but without breaking the normal CentOS boot).  For
+example, there are dozens of file systems available: you need at least ext3,
+but you don't need XFS or Reiserfs.  Commit your .config kernel file into
+GIT, but rename it "kernel.config".  We will grade you on how small your
+kernel configuration is with the following exceptions:
+
+1. All start time servers that run by default in the VM provided, should
+   start without failing.
+
+2. We won't count "kernel hacking" options: so you may enable as many of
+   them as you'd like.
+
+To submit new files, use the subdirectory named "hw1" inside hw1-<user>
+directory that you checked out. Remember to git add, commit, and push this
+new directory.  Put all new files that you add in this directory. This may
+include user space program (.c and .h files), README, kernel files (in case
+you are implementing system call as a loadable kernel module), Makefile,
+kernel.config, or anything else you deem appropriate.
+
+For existing kernel source to which you make modification, use git
+add, commit, and push as mentioned on class web site.
+
+There must be a Makefile in hw1/ directory.  Doing a "make" in hw1/ should
+accomplish the following:
+
+1. Compile user space program to produce an executable by the name "xhw1".
+   This will be used to test your system call.
+
+2. In case you are implementing system call as a loadable kernel module, the
+   "make" command should also produce a sys_xconcat.ko file which can be
+   insmod'ed into the kernel.
+
+(Use gcc -Wall -Werror in makefile commands.  We will anyway add them if you
+don't :-)  Note that only your code must pass -Wall -Werror: the rest of the
+kernel code doesn't have to.
+
+The hw1/ directory should also contain a "kernel.config" file which will be
+used to bring up your kernel.
+
+Note that in case you are implementing system call directly in the kernel
+code (and not as a loadable kernel module), then just compiling and
+installing your kernel should activate the system call.
+
+Just to give you an idea how we will grade your submission: We will check
+out your git repository.  We will use kernel.config file in hw1/
+subdirectory to compile and then install your kernel.  We will then do a
+make in hw1/ subdirectory.  If your implementation is based on a loadable
+module, we will expect sys_xconcat.ko to be present in hw1/ after doing a
+make.  We will then insmod it and use hw1/xhw1 (also generated as part of
+make) to test your system call on various inputs.  Note that insmod step
+will be skipped in case you implement system call directly into the kernel.
+
+PLEASE test your submission before submitting it, by doing a dry run of
+above steps. DO NOT make the common mistake of writing code until the very
+last minute, and then trying to figure out how to use GIT and skipping the
+testing of what you submitted.  You will lose valuable points if you do not
+get to submit on time or if you submission is incomplete!!!
+
+Make sure that you follow above submission guidelines strictly.  We *will*
+deduct points for not following this instructions precisely.
+
+* EXTRA CREDIT (OPTIONAL, total 10 points)
+
+If you do any of the extra credit work, then your EC code must be wrapped in
+
+	#ifdef EXTRA_CREDIT
+		// EC code here
+	#else
+		// base assignment code here
+	#endif
+
+[A] 10 points: Atomic concatenation mode.
+
+Normally, your system call should open each of the input files for reading;
+if any file cannot be open for reading, return an appropriate error.  If you
+CAN open all input files for reading, then start reading them one at a time,
+and concatenating their content into the output file.  If for any reason you
+fail to read one of the input files mid-way, or fail to write to the output
+file mid-way, you should by default NOT consider this an error.  Instead,
+simply return the number of bytes that you successfully written to the
+output file.  This is similar to the behavior of the write(2) system call,
+and is called a "partial write."
+
+In the "atomic mode," however, if you're unable to read any input file
+mid-way, or unable to write to the output file mid-way, it should be
+considered an error and you should return an error.  In that case, you must
+also cleanup after yourself: don't leave a partially written out or modified
+output file (this can be tricky especially if you've already appended to an
+existing output file).  In other words, the only success we consider in this
+atomic-concatenation mode is if you were able to read ALL input files and
+wrote out all of them to the output file.
+
+Good luck.
+
+* Change History:
+
+1/20: draft 1
+2/12: clarify -m option ARG and use of umask.
